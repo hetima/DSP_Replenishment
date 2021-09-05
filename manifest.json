@@ -1,0 +1,7 @@
+{
+    "name": "Replenishment",
+    "description": "Take out building items stored in the initial planet from anywhere / 初期惑星に保管している建築アイテムをどこからでも取り出せる",
+    "version_number": "1.0.0",
+    "dependencies": [],
+    "website_url": "https://github.com/hetima/DSP_Replenishment"
+}
