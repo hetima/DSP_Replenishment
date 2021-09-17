@@ -113,8 +113,8 @@ namespace ReplenishmentMod
             }
             if (picked > 0)
             {
-                UIRealtimeTip.Popup(picked.ToString() + " Items Delivered", false, 0);
-                mainPlayer.TryAddItemToPackage(itemId, picked, false, 0);
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, false, 0);
+                UIItemup.Up(itemId, upCount);
                 return true;
             }
 
