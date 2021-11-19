@@ -21,6 +21,10 @@ The following will be added to the building tool to make use of this feature.
 
 ## Release Notes
 
+### v1.0.2
+
+- Rebuild for 0.8.23.9808
+
 ### v1.0.1
 
 - Rebuild for 0.8.22.9331
