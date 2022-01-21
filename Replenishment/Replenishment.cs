@@ -11,7 +11,7 @@ using UnityEngine.UI;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.2")]
+    [BepInPlugin(__GUID__, __NAME__, "1.0.3")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
