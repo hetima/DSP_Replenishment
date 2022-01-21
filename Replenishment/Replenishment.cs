@@ -104,7 +104,8 @@ namespace ReplenishmentMod
                     continue;
                 }
 
-                picked += sc.TakeItem(itemId, pick);
+                int inc;
+                picked += sc.TakeItem(itemId, pick, out inc);
                 pick -= picked;
                 if (pick <= 0)
                 {
@@ -113,7 +114,8 @@ namespace ReplenishmentMod
             }
             if (picked > 0)
             {
-                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, false, 0);
+                int inc = 0; //とりあえず0
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
