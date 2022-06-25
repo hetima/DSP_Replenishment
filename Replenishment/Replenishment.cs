@@ -123,6 +123,45 @@ namespace ReplenishmentMod
             return false;
         }
 
+        public static bool DeliverFromVoid(int itemId, out string err)
+        {
+            err = "";
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            bool accept = false;
+            if (mainPlayer != null)
+            {
+                for (int i = mainPlayer.package.size - 1; i >= 0; i--)
+                {
+                    if (mainPlayer.package.grids[i].itemId == 0)
+                    {
+                        accept = true;
+                        break;
+                    }
+                }
+            }
+            if (!accept)
+            {
+                err = "Inventory is full";
+                return false;
+            }
+            int pick = StorageComponent.itemStackCount[itemId];
+
+            int inc = 0;
+            int upCount = mainPlayer.TryAddItemToPackage(itemId, pick, inc, false, 0);
+            UIItemup.Up(itemId, upCount);
+            return true;
+        }
+        public static bool DeliverFrom(int itemId, out string err)
+        {
+            if (GameMain.sandboxToolsEnabled)
+            {
+                return DeliverFromVoid(itemId, out err);
+            }
+            else
+            {
+                return DeliverFromBirthPlanet(itemId, out err);
+            }
+        }
 
         private static void OnToolBtnRightClick(int obj)
         {
@@ -136,7 +175,7 @@ namespace ReplenishmentMod
                     if (itemId < 12000 && itemId > 0)
                     {
                         string err;
-                        if (DeliverFromBirthPlanet(itemId, out err))
+                        if (DeliverFrom(itemId, out err))
                         {
                             VFAudio.Create("transfer-item", null, Vector3.zero, true, 0);
                             //UIRoot.instance.uiGame.ShutAllFunctionWindow();
