@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using System;
@@ -11,7 +12,7 @@ using UnityEngine.UI;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.4")]
+    [BepInPlugin(__GUID__, __NAME__, "1.0.5")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
@@ -23,7 +24,16 @@ namespace ReplenishmentMod
             Logger = base.Logger;
             //Logger.LogInfo("Awake");
 
+            Configs.configEnableOutgoingStorage = Config.Bind<bool>(
+                    "General",                                
+                    "EnableOutgoingStorage",
+                    false,
+                    "Whether or not to enable picking items from storages with an outgoing sorter attached.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
+        }
+
+        public static class Configs {
+            public static bool configEnableOutgoingStorage = false;
         }
 
         public static PlanetFactory BirthPlanetFactory()
@@ -87,23 +97,25 @@ namespace ReplenishmentMod
                     continue;
                 }
 
-                //搬出ソーターが付いているものは除外
-                bool isOutput = false;
-                for (int j = 0; j <= 11; j++)
+                if (!Configs.configEnableOutgoingStorage)
                 {
-                    int otherObjId;
-                    int otherSlot;
-                    factory.ReadObjectConn(sc.entityId, j, out isOutput, out otherObjId, out otherSlot);
+                    //搬出ソーターが付いているものは除外
+                    bool isOutput = false;
+                    for (int j = 0; j <= 11; j++)
+                    {
+                        int otherObjId;
+                        int otherSlot;
+                        factory.ReadObjectConn(sc.entityId, j, out isOutput, out otherObjId, out otherSlot);
+                        if (isOutput)
+                        {
+                            break;
+                        }
+                    }
                     if (isOutput)
                     {
-                        break;
+                        continue;
                     }
                 }
-                if (isOutput)
-                {
-                    continue;
-                }
-
                 int inc;
                 picked += sc.TakeItem(itemId, pick, out inc);
                 pick -= picked;
