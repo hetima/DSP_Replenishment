@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.5")]
+    [BepInPlugin(__GUID__, __NAME__, "1.0.6")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
@@ -25,15 +25,22 @@ namespace ReplenishmentMod
             //Logger.LogInfo("Awake");
 
             Configs.configEnableOutgoingStorage = Config.Bind<bool>(
-                    "General",                                
+                    "General",
                     "EnableOutgoingStorage",
                     false,
                     "Whether or not to enable picking items from storages with an outgoing sorter attached.").Value;
+            Configs.configEnableSearchingAllPlanets = Config.Bind<bool>(
+                    "General",
+                    "EnableSearchingAllPlanets",
+                    false,
+                    "Whether or not to enable picking items from storages on any planets.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
-        public static class Configs {
+        public static class Configs
+        {
             public static bool configEnableOutgoingStorage = false;
+            public static bool configEnableSearchingAllPlanets = false;
         }
 
         public static PlanetFactory BirthPlanetFactory()
@@ -51,41 +58,18 @@ namespace ReplenishmentMod
             return null;
         }
 
-        public static bool DeliverFromBirthPlanet(int itemId, out string err)
+        private static int GetFromFactory(PlanetFactory factory, int itemId, out int inc)
         {
-            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
-            bool accept = false;
-            if (mainPlayer != null)
-            {
-                for (int i = mainPlayer.package.size - 1; i >= 0; i--)
-                {
-                    if (mainPlayer.package.grids[i].itemId == 0)
-                    {
-                        accept = true;
-                        break;
-                    }
-                }
-            }
-            if (!accept)
-            {
-                err = "Inventory is full";
-                return false;
-            }
-
-            PlanetFactory factory = BirthPlanetFactory();
+            inc = 0;
             if (factory == null)
             {
-                err = "Initial planet not found";
-                return false;
+                return 0;
             }
-
-            err = "Item not found";
             int pick = StorageComponent.itemStackCount[itemId];
-            int picked = 0;
+            int picked = 0;            
             FactoryStorage fs = factory.factoryStorage;
             for (int i = 1; i < fs.storageCursor; i++)
             {
-
                 StorageComponent sc = fs.storagePool[i];
                 if (sc == null || sc.entityId <= 0)
                 {
@@ -116,8 +100,51 @@ namespace ReplenishmentMod
                         continue;
                     }
                 }
-                int inc;
-                picked += sc.TakeItem(itemId, pick, out inc);
+                picked += sc.TakeItem(itemId, pick, out int inc2);
+                inc += inc2;
+                pick -= picked;
+                if (pick <= 0)
+                {
+                    return picked;
+                }
+            }
+            return picked;
+        }
+
+        private static bool CheckInventoryCapacity()
+        {
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            if (mainPlayer != null)
+            {
+                for (int i = mainPlayer.package.size - 1; i >= 0; i--)
+                {
+                    if (mainPlayer.package.grids[i].itemId == 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public static bool DeliverFromAllPlanets(int itemId, out string err)
+        {
+            GameData game = UIRoot.instance.uiGame.gameData;
+            PlanetFactory[] factories = game.factories;
+            if (!CheckInventoryCapacity())
+            {
+                err = "Inventory is full";
+                return false;
+            }
+            err = "Item not found";
+            int picked = 0;
+            int pick = StorageComponent.itemStackCount[itemId];
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            int inc = 0;
+            foreach (PlanetFactory factory in factories)
+            {
+                picked += GetFromFactory(factory, itemId, out int inc2);
+                inc += inc2;
                 pick -= picked;
                 if (pick <= 0)
                 {
@@ -126,12 +153,31 @@ namespace ReplenishmentMod
             }
             if (picked > 0)
             {
-                int inc = 0; //とりあえず0
                 int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
+            return false;
+        }
 
+        public static bool DeliverFromBirthPlanet(int itemId, out string err)
+        {
+            if (!CheckInventoryCapacity())
+            {
+                err = "Inventory is full";
+                return false;
+            }
+
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            PlanetFactory factory = BirthPlanetFactory();
+            err = "Item not found";
+            int picked = GetFromFactory(factory, itemId, out int inc);
+            if (picked > 0)
+            {
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0);
+                UIItemup.Up(itemId, upCount);
+                return true;
+            }
             return false;
         }
 
@@ -163,11 +209,16 @@ namespace ReplenishmentMod
             UIItemup.Up(itemId, upCount);
             return true;
         }
+
         public static bool DeliverFrom(int itemId, out string err)
         {
             if (GameMain.sandboxToolsEnabled)
             {
                 return DeliverFromVoid(itemId, out err);
+            }
+            if (Configs.configEnableSearchingAllPlanets)
+            {
+                return DeliverFromAllPlanets(itemId, out err);
             }
             else
             {
