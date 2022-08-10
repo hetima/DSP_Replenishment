@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.6")]
+    [BepInPlugin(__GUID__, __NAME__, "1.0.7")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
@@ -34,6 +34,11 @@ namespace ReplenishmentMod
                     "EnableSearchingAllPlanets",
                     false,
                     "Whether or not to enable picking items from storages on any planets.").Value;
+            Configs.configEnableSearchingInterstellarStations = Config.Bind<bool>(
+                    "General",
+                    "EnableSearchingInterstellarStations",
+                    false,
+                    "Whether or not to enable picking items from interstellar stations.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -41,6 +46,7 @@ namespace ReplenishmentMod
         {
             public static bool configEnableOutgoingStorage = false;
             public static bool configEnableSearchingAllPlanets = false;
+            public static bool configEnableSearchingInterstellarStations = false;
         }
 
         public static PlanetFactory BirthPlanetFactory()
@@ -58,7 +64,7 @@ namespace ReplenishmentMod
             return null;
         }
 
-        private static int GetFromFactory(PlanetFactory factory, int itemId, out int inc)
+        private static int GetFromFactoryStorages(PlanetFactory factory, int itemId, out int inc)
         {
             inc = 0;
             if (factory == null)
@@ -66,7 +72,7 @@ namespace ReplenishmentMod
                 return 0;
             }
             int pick = StorageComponent.itemStackCount[itemId];
-            int picked = 0;            
+            int picked = 0;
             FactoryStorage fs = factory.factoryStorage;
             for (int i = 1; i < fs.storageCursor; i++)
             {
@@ -111,6 +117,38 @@ namespace ReplenishmentMod
             return picked;
         }
 
+        private static int GetFromFactoryStations(PlanetFactory factory, int itemId, int count, out int inc)
+        {
+            inc = 0;
+            if (factory == null || factory.factorySystem == null || factory.transport == null)
+            {
+                return 0;
+            }
+            int pick = count;
+            int totalPicked = 0;
+            foreach (StationComponent sc in factory.transport.stationPool)
+            {
+                if (sc == null || sc.entityId <= 0 || sc.isVeinCollector || sc.isCollector)
+                {
+                    continue;
+                }
+                if (sc.isStellar)
+                {
+                    int picked = pick;
+                    int id = itemId;
+                    sc.TakeItem(ref id, ref picked, out int inc2);
+                    inc += inc2;
+                    pick -= picked;
+                    totalPicked += picked;
+                    if (pick <= 0)
+                    {
+                        return totalPicked;
+                    }
+                }
+            }
+            return totalPicked;
+        }
+
         private static bool CheckInventoryCapacity()
         {
             Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
@@ -143,13 +181,24 @@ namespace ReplenishmentMod
             int inc = 0;
             foreach (PlanetFactory factory in factories)
             {
-                picked += GetFromFactory(factory, itemId, out int inc2);
+                picked += GetFromFactoryStorages(factory, itemId, out int inc2);
                 inc += inc2;
                 pick -= picked;
                 if (pick <= 0)
                 {
                     break;
                 }
+                if (Configs.configEnableSearchingInterstellarStations)
+                {
+                    picked += GetFromFactoryStations(factory, itemId, pick, out int inc3);
+                    inc += inc3;
+                    pick -= picked;
+                    if (pick <= 0)
+                    {
+                        break;
+                    }
+                }
+
             }
             if (picked > 0)
             {
@@ -167,14 +216,23 @@ namespace ReplenishmentMod
                 err = "Inventory is full";
                 return false;
             }
-
+            int pick = StorageComponent.itemStackCount[itemId];
             Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
             PlanetFactory factory = BirthPlanetFactory();
             err = "Item not found";
-            int picked = GetFromFactory(factory, itemId, out int inc);
+            int picked = GetFromFactoryStorages(factory, itemId, out int inc);
+            int inc2 = 0;
+            if (Configs.configEnableSearchingInterstellarStations)
+            {
+                if (picked < pick)
+                {
+                    pick -= picked;
+                    picked += GetFromFactoryStations(factory, itemId, pick, out inc2);
+                }
+            }
             if (picked > 0)
             {
-                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0);
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc + inc2, false, 0);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
