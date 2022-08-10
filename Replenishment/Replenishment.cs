@@ -183,25 +183,14 @@ namespace ReplenishmentMod
 
         public static bool DeliverFromVoid(int itemId, out string err)
         {
-            err = "";
-            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
-            bool accept = false;
-            if (mainPlayer != null)
-            {
-                for (int i = mainPlayer.package.size - 1; i >= 0; i--)
-                {
-                    if (mainPlayer.package.grids[i].itemId == 0)
-                    {
-                        accept = true;
-                        break;
-                    }
-                }
-            }
-            if (!accept)
+            if (!CheckInventoryCapacity())
             {
                 err = "Inventory is full";
                 return false;
             }
+
+            err = "";
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
             int pick = StorageComponent.itemStackCount[itemId];
 
             int inc = 0;
