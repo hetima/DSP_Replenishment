@@ -314,6 +314,7 @@ namespace ReplenishmentMod
                     ref ItemProto[,] protos = ref AccessTools.StaticFieldRefAccess<ItemProto[,]>(typeof(UIBuildMenu), "protos");
                     protos[6, 10] = LDB.items.Select(5002); //物流船
                     protos[6, 9] = LDB.items.Select(5001); //物流ドローン
+                    protos[6, 8] = LDB.items.Select(5003); //Logistics Bot
                     protos[7, 10] = LDB.items.Select(1210); //空間歪曲器
                     protos[7, 9] = LDB.items.Select(1803); //反物質燃料棒
                     protos[7, 8] = LDB.items.Select(1802); //重水素燃料棒
