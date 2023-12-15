@@ -38,6 +38,10 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 
 ## Release Notes
 
+### v1.0.9
+
+- Support Dark Fog Update(0.10.28.20759)
+
 ### v1.0.8
 
 - Added Logistics Bot to the building tool slot

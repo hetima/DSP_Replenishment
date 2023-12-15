@@ -202,7 +202,7 @@ namespace ReplenishmentMod
             }
             if (picked > 0)
             {
-                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0);
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0, false);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
@@ -232,7 +232,7 @@ namespace ReplenishmentMod
             }
             if (picked > 0)
             {
-                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc + inc2, false, 0);
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc + inc2, false, 0, false);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
@@ -252,7 +252,7 @@ namespace ReplenishmentMod
             int pick = StorageComponent.itemStackCount[itemId];
 
             int inc = 0;
-            int upCount = mainPlayer.TryAddItemToPackage(itemId, pick, inc, false, 0);
+            int upCount = mainPlayer.TryAddItemToPackage(itemId, pick, inc, false, 0, false);
             UIItemup.Up(itemId, upCount);
             return true;
         }
@@ -312,13 +312,16 @@ namespace ReplenishmentMod
                 {
                     //ItemProto[,] protos 0は無視 1から
                     ref ItemProto[,] protos = ref AccessTools.StaticFieldRefAccess<ItemProto[,]>(typeof(UIBuildMenu), "protos");
+                    //transportation
                     protos[6, 10] = LDB.items.Select(5002); //物流船
                     protos[6, 9] = LDB.items.Select(5001); //物流ドローン
                     protos[6, 8] = LDB.items.Select(5003); //Logistics Bot
-                    protos[7, 10] = LDB.items.Select(1210); //空間歪曲器
-                    protos[7, 9] = LDB.items.Select(1803); //反物質燃料棒
-                    protos[7, 8] = LDB.items.Select(1802); //重水素燃料棒
-                    protos[7, 7] = LDB.items.Select(1801); //水素燃料棒
+                    //storage
+                    protos[4, 10] = LDB.items.Select(1210); //空間歪曲器
+                    protos[4, 9] = LDB.items.Select(1803); //反物質燃料棒
+                    protos[4, 8] = LDB.items.Select(1802); //重水素燃料棒
+                    protos[4, 7] = LDB.items.Select(1801); //水素燃料棒
+
                     //protos[8, 10] = LDB.items.Select(1503); //小型輸送ロケット
                     //protos[8, 9] = LDB.items.Select(1501); //ソーラーセイル
 
