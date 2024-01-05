@@ -4,7 +4,7 @@ Mod for Dyson Sphere Program. Needs BepInEx.
 
 Take out building items stored in the initial planet (the first planet landed on) from other planet.  
 
-Right-clicking the building tool icon will move the corresponding item stored in the initial planet's storage to the inventory. Storage with an outgoing sorter attached will be ignored. One stack amount is moved at a time.  
+Right-clicking the building tool icon (or icon on Replicator window) will move the corresponding item stored in the initial planet's storage to the inventory. Storage with an outgoing sorter attached will be ignored. One stack amount is moved at a time.  
 The following will be added to the building tool to make use of this feature. 
 - Logistics drone and Logistics vessel and Logistics Bot
 - each types of fuel rods and Space warper
@@ -21,6 +21,7 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 |EnableOutgoingStorage|bool|false|Whether or not to enable picking items from storages with an outgoing sorter attached.|
 |EnableSearchingAllPlanets|bool|false|Whether or not to enable picking items from storages on any planets.|
 |EnableSearchingInterstellarStations|bool|false|Whether or not to enable picking items from interstellar stations.|
+|EnableRightClickOnReplicator|bool|true|Enable right-click to replenish on Replicator window.|
 
 
 ## 説明
@@ -37,6 +38,9 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 
 
 ## Release Notes
+
+### v1.1.0
+- Enable right-click to replenish on Replicator window
 
 ### v1.0.9
 

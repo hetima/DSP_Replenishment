@@ -13,7 +13,7 @@ using UnityEngine.EventSystems;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.8")]
+    [BepInPlugin(__GUID__, __NAME__, "1.1.0")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
