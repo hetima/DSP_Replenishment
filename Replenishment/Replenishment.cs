@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace ReplenishmentMod
 {
@@ -39,6 +40,11 @@ namespace ReplenishmentMod
                     "EnableSearchingInterstellarStations",
                     false,
                     "Whether or not to enable picking items from interstellar stations.").Value;
+            Configs.configEnableRightClickOnReplicator = Config.Bind<bool>(
+                   "General",
+                   "EnableRightClickOnReplicator",
+                   true,
+                   "Enable right-click to replenish on Replicator window.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -47,6 +53,7 @@ namespace ReplenishmentMod
             public static bool configEnableOutgoingStorage = false;
             public static bool configEnableSearchingAllPlanets = false;
             public static bool configEnableSearchingInterstellarStations = false;
+            public static bool configEnableRightClickOnReplicator = true;
         }
 
         public static PlanetFactory BirthPlanetFactory()
@@ -301,6 +308,88 @@ namespace ReplenishmentMod
             }
         }
 
+        public static int ItemIdHintUnderMouse()
+        {
+            List<RaycastResult> targets = new List<RaycastResult>();
+            PointerEventData pointer = new PointerEventData(EventSystem.current);
+            pointer.position = Input.mousePosition;
+            EventSystem.current.RaycastAll(pointer, targets);
+            foreach (RaycastResult target in targets)
+            {
+                UIButton btn = target.gameObject.GetComponentInParent<UIButton>();
+                if (btn?.tips != null && btn.tips.itemId > 0)
+                {
+                    return btn.tips.itemId;
+                }
+
+                UIReplicatorWindow repWin = target.gameObject.GetComponentInParent<UIReplicatorWindow>();
+                if (repWin != null)
+                {
+                    int mouseRecipeIndex = AccessTools.FieldRefAccess<UIReplicatorWindow, int>(repWin, "mouseRecipeIndex");
+                    RecipeProto[] recipeProtoArray = AccessTools.FieldRefAccess<UIReplicatorWindow, RecipeProto[]>(repWin, "recipeProtoArray");
+                    if (mouseRecipeIndex < 0)
+                    {
+                        return 0;
+                    }
+                    RecipeProto recipeProto = recipeProtoArray[mouseRecipeIndex];
+                    if (recipeProto != null)
+                    {
+                        return recipeProto.Results[0];
+                    }
+                    return 0;
+                }
+
+                UIStorageGrid grid = target.gameObject.GetComponentInParent<UIStorageGrid>();
+                if (grid != null)
+                {
+                    StorageComponent storage = AccessTools.FieldRefAccess<UIStorageGrid, StorageComponent>(grid, "storage");
+                    int mouseOnX = AccessTools.FieldRefAccess<UIStorageGrid, int>(grid, "mouseOnX");
+                    int mouseOnY = AccessTools.FieldRefAccess<UIStorageGrid, int>(grid, "mouseOnY");
+                    if (mouseOnX >= 0 && mouseOnY >= 0 && storage != null)
+                    {
+                        int num6 = mouseOnX + mouseOnY * grid.colCount;
+                        return storage.grids[num6].itemId;
+                    }
+                    return 0;
+                }
+
+                UIProductEntry productEntry = target.gameObject.GetComponentInParent<UIProductEntry>();
+                if (productEntry != null)
+                {
+                    if (productEntry.productionStatWindow.isProductionTab)
+                    {
+                        return productEntry.entryData?.itemId ?? 0;
+                    }
+                    return 0;
+                }
+            }
+            return 0;
+        }
+
+        private static void OnReplicatorRightClick(int obj = 0)
+        {
+            if (! Configs.configEnableRightClickOnReplicator)
+            {
+                return;
+            }
+            int itemId = ItemIdHintUnderMouse();
+            if (itemId > 0)
+            {
+                string err;
+                if (DeliverFrom(itemId, out err))
+                {
+                    VFAudio.Create("transfer-item", null, Vector3.zero, true, 0);
+                }
+                else
+                {
+                    VFAudio.Create("ui-error", null, Vector3.zero, true, 5);
+                    UIRealtimeTip.Popup(err, false, 0);
+                }
+            }
+        }
+
+        
+
         static class Patch
         {
             internal static bool _initialized = false;
@@ -354,6 +443,70 @@ namespace ReplenishmentMod
                     {
                         __instance.childButtons[i].onRightClick -= OnToolBtnRightClick;
                     }
+                }
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIReplicatorWindow), "OnRecipeMouseDown")]
+            public static void UIReplicatorWindow_OnRecipeMouseDown_Postfix(UIReplicatorWindow __instance, BaseEventData evtData)
+            {
+                if (__instance != null)
+                {
+                    PointerEventData pointerEventData = evtData as PointerEventData;
+                    if (pointerEventData != null && pointerEventData.button == PointerEventData.InputButton.Right)
+                    {
+                        Replenishment.OnReplicatorRightClick(0);
+                    }
+                }
+            }
+
+            [HarmonyPrefix, HarmonyPatch(typeof(UIReplicatorWindow), "_OnRegEvent")]
+            public static void UIReplicatorWindow_OnRegEvent_Prefix(UIReplicatorWindow __instance)
+            {
+                List<UIButton> treeUpList = AccessTools.FieldRefAccess<UIReplicatorWindow, List<UIButton>>(__instance, "treeUpList");
+                List<UIButton> treeDownList = AccessTools.FieldRefAccess<UIReplicatorWindow, List<UIButton>>(__instance, "treeDownList");
+
+                foreach (UIButton uibutton in treeUpList)
+                {
+                    uibutton.onRightClick += Replenishment.OnReplicatorRightClick;
+                }
+                foreach (UIButton uibutton2 in treeDownList)
+                {
+                    uibutton2.onRightClick += Replenishment.OnReplicatorRightClick;
+                }
+
+                if (treeUpList.Count < 8)
+                {
+                    for (int i = treeUpList.Count; i < 8; i++)
+                    {
+                        UIButton uibutton5 = UnityEngine.Object.Instantiate<UIButton>(__instance.treeUpPrefab, __instance.treeUpPrefab.transform.parent);
+                        uibutton5.onRightClick += Replenishment.OnReplicatorRightClick;
+                        treeUpList.Add(uibutton5);
+                    }
+                }
+                if (treeDownList.Count < 8)
+                {
+                    for (int i = treeDownList.Count; i < 8; i++)
+                    {
+                        UIButton uibutton2 = UnityEngine.Object.Instantiate<UIButton>(__instance.treeDownPrefab, __instance.treeDownPrefab.transform.parent);
+                        uibutton2.onRightClick += Replenishment.OnReplicatorRightClick;
+                        treeDownList.Add(uibutton2);
+                    }
+                }
+            }
+
+            [HarmonyPostfix, HarmonyPatch(typeof(UIReplicatorWindow), "_OnUnregEvent")]
+            public static void UIReplicatorWindow_OnUnregEvent_Postfix(UIReplicatorWindow __instance)
+            {
+                List<UIButton> treeUpList = AccessTools.FieldRefAccess<UIReplicatorWindow, List<UIButton>>(__instance, "treeUpList");
+                List<UIButton> treeDownList = AccessTools.FieldRefAccess<UIReplicatorWindow, List<UIButton>>(__instance, "treeDownList");
+
+                foreach (UIButton uibutton in treeUpList)
+                {
+                    uibutton.onRightClick -= Replenishment.OnReplicatorRightClick;
+                }
+                foreach (UIButton uibutton2 in treeDownList)
+                {
+                    uibutton2.onRightClick -= Replenishment.OnReplicatorRightClick;
                 }
             }
         }
