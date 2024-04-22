@@ -45,6 +45,11 @@ namespace ReplenishmentMod
                    "EnableRightClickOnReplicator",
                    true,
                    "Enable right-click to replenish on Replicator window.").Value;
+            Configs.configEnableUnlimitedAccessInNormalMode = Config.Bind<bool>(
+                   "Cheat",
+                   "EnableUnlimitedAccessInNormalMode",
+                   false,
+                   "Infinite access if not in stock in normal mode.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -54,6 +59,8 @@ namespace ReplenishmentMod
             public static bool configEnableSearchingAllPlanets = false;
             public static bool configEnableSearchingInterstellarStations = false;
             public static bool configEnableRightClickOnReplicator = true;
+            public static bool configEnableUnlimitedAccessInNormalMode = false;
+
         }
 
         public static PlanetFactory BirthPlanetFactory()
@@ -176,11 +183,6 @@ namespace ReplenishmentMod
         {
             GameData game = UIRoot.instance.uiGame.gameData;
             PlanetFactory[] factories = game.factories;
-            if (!CheckInventoryCapacity())
-            {
-                err = "Inventory is full";
-                return false;
-            }
             err = "Item not found";
             int picked = 0;
             int pick = StorageComponent.itemStackCount[itemId];
@@ -218,11 +220,6 @@ namespace ReplenishmentMod
 
         public static bool DeliverFromBirthPlanet(int itemId, out string err)
         {
-            if (!CheckInventoryCapacity())
-            {
-                err = "Inventory is full";
-                return false;
-            }
             int pick = StorageComponent.itemStackCount[itemId];
             Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
             PlanetFactory factory = BirthPlanetFactory();
@@ -248,12 +245,6 @@ namespace ReplenishmentMod
 
         public static bool DeliverFromVoid(int itemId, out string err)
         {
-            if (!CheckInventoryCapacity())
-            {
-                err = "Inventory is full";
-                return false;
-            }
-
             err = "";
             Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
             int pick = StorageComponent.itemStackCount[itemId];
@@ -266,17 +257,51 @@ namespace ReplenishmentMod
 
         public static bool DeliverFrom(int itemId, out string err)
         {
+            if (!CheckInventoryCapacity())
+            {
+                err = "Inventory is full";
+                return false;
+            }
+
             if (GameMain.sandboxToolsEnabled)
             {
                 return DeliverFromVoid(itemId, out err);
             }
             if (Configs.configEnableSearchingAllPlanets)
             {
-                return DeliverFromAllPlanets(itemId, out err);
+                bool result = DeliverFromAllPlanets(itemId, out err);
+                if (!result && Configs.configEnableUnlimitedAccessInNormalMode)
+                {
+                    return DeliverFromVoid(itemId, out err);
+                }
+                return result;
             }
             else
             {
-                return DeliverFromBirthPlanet(itemId, out err);
+                bool result = DeliverFromBirthPlanet(itemId, out err);
+                if (!result && Configs.configEnableUnlimitedAccessInNormalMode)
+                {
+                    return DeliverFromVoid(itemId, out err);
+                }
+                return result;
+            }
+        }
+
+        public static void DoDeliver(int itemId)
+        {
+            if (itemId < 12000 && itemId > 0)
+            {
+                if (DeliverFrom(itemId, out string err))
+                {
+                    VFAudio.Create("transfer-item", null, Vector3.zero, true, 0);
+                    //UIRoot.instance.uiGame.ShutAllFunctionWindow();
+                    //UIRoot.instance.uiGame.OpenPlayerInventory();
+                }
+                else
+                {
+                    VFAudio.Create("ui-error", null, Vector3.zero, true, 5);
+                    UIRealtimeTip.Popup(err, false, 0);
+                }
             }
         }
 
@@ -289,21 +314,7 @@ namespace ReplenishmentMod
                 if (uiBtn != null)
                 {
                     int itemId = uiBtn.tips.itemId;
-                    if (itemId < 12000 && itemId > 0)
-                    {
-                        string err;
-                        if (DeliverFrom(itemId, out err))
-                        {
-                            VFAudio.Create("transfer-item", null, Vector3.zero, true, 0);
-                            //UIRoot.instance.uiGame.ShutAllFunctionWindow();
-                            //UIRoot.instance.uiGame.OpenPlayerInventory();
-                        }
-                        else
-                        {
-                            VFAudio.Create("ui-error", null, Vector3.zero, true, 5);
-                            UIRealtimeTip.Popup(err, false, 0);
-                        }
-                    }
+                    DoDeliver(itemId);
                 }
             }
         }
@@ -375,16 +386,7 @@ namespace ReplenishmentMod
             int itemId = ItemIdHintUnderMouse();
             if (itemId > 0)
             {
-                string err;
-                if (DeliverFrom(itemId, out err))
-                {
-                    VFAudio.Create("transfer-item", null, Vector3.zero, true, 0);
-                }
-                else
-                {
-                    VFAudio.Create("ui-error", null, Vector3.zero, true, 5);
-                    UIRealtimeTip.Popup(err, false, 0);
-                }
+                DoDeliver(itemId);
             }
         }
 
