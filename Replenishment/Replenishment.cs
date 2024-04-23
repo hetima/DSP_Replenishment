@@ -263,26 +263,18 @@ namespace ReplenishmentMod
                 return false;
             }
 
-            if (GameMain.sandboxToolsEnabled)
+            if (GameMain.sandboxToolsEnabled || Configs.configEnableUnlimitedAccessInNormalMode)
             {
                 return DeliverFromVoid(itemId, out err);
             }
             if (Configs.configEnableSearchingAllPlanets)
             {
                 bool result = DeliverFromAllPlanets(itemId, out err);
-                if (!result && Configs.configEnableUnlimitedAccessInNormalMode)
-                {
-                    return DeliverFromVoid(itemId, out err);
-                }
                 return result;
             }
             else
             {
                 bool result = DeliverFromBirthPlanet(itemId, out err);
-                if (!result && Configs.configEnableUnlimitedAccessInNormalMode)
-                {
-                    return DeliverFromVoid(itemId, out err);
-                }
                 return result;
             }
         }
