@@ -61,6 +61,9 @@
     <Reference Include="UnityEngine.UI">
       <HintPath>G:\SteamLibrary\steamapps\common\Dyson Sphere Program\DSPGAME_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>G:\SteamLibrary\steamapps\common\Dyson Sphere Program\DSPGAME_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Replenishment.cs" />
