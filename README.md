@@ -39,6 +39,8 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 
 
 ## Release Notes
+### v1.1.2
+- Suppress error (by lxb007981)
 
 ### v1.1.1
 - Added config `EnableUnlimitedAccessInNormalMode` (default is off)

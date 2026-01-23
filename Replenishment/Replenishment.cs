@@ -13,7 +13,7 @@ using UnityEngine.EventSystems;
 
 namespace ReplenishmentMod
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.1.1")]
+    [BepInPlugin(__GUID__, __NAME__, "1.1.2")]
     public class Replenishment : BaseUnityPlugin
     {
         public const string __NAME__ = "Replenishment";
@@ -49,7 +49,7 @@ namespace ReplenishmentMod
                    "Cheat",
                    "EnableUnlimitedAccessInNormalMode",
                    false,
-                   "Infinite access if not in stock in normal mode.").Value;
+                   "Infinite access in normal mode.").Value;
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
