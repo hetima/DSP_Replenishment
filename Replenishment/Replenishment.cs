@@ -40,6 +40,11 @@ namespace ReplenishmentMod
                     "EnableSearchingInterstellarStations",
                     false,
                     "Whether or not to enable picking items from interstellar stations.").Value;
+            Configs.configEnableSearchingPlanetaryStations = Config.Bind<bool>(
+                    "General",
+                    "EnableSearchingPlanetaryStations",
+                    false,
+                    "Whether or not to enable picking items from planetary stations.").Value;
             Configs.configEnableRightClickOnReplicator = Config.Bind<bool>(
                    "General",
                    "EnableRightClickOnReplicator",
@@ -58,6 +63,7 @@ namespace ReplenishmentMod
             public static bool configEnableOutgoingStorage = false;
             public static bool configEnableSearchingAllPlanets = false;
             public static bool configEnableSearchingInterstellarStations = false;
+            public static bool configEnableSearchingPlanetaryStations = false;
             public static bool configEnableRightClickOnReplicator = true;
             public static bool configEnableUnlimitedAccessInNormalMode = false;
 
@@ -146,7 +152,9 @@ namespace ReplenishmentMod
                 {
                     continue;
                 }
-                if (sc.isStellar)
+                
+                if ((sc.isStellar && Configs.configEnableSearchingInterstellarStations) ||
+                    (!sc.isStellar && Configs.configEnableSearchingPlanetaryStations))
                 {
                     int picked = pick;
                     int id = itemId;
@@ -197,7 +205,7 @@ namespace ReplenishmentMod
                 {
                     break;
                 }
-                if (Configs.configEnableSearchingInterstellarStations)
+                if (Configs.configEnableSearchingInterstellarStations || Configs.configEnableSearchingPlanetaryStations)
                 {
                     picked += GetFromFactoryStations(factory, itemId, pick, out int inc3);
                     inc += inc3;
@@ -226,7 +234,7 @@ namespace ReplenishmentMod
             err = "Item not found";
             int picked = GetFromFactoryStorages(factory, itemId, out int inc);
             int inc2 = 0;
-            if (Configs.configEnableSearchingInterstellarStations)
+            if (Configs.configEnableSearchingInterstellarStations || Configs.configEnableSearchingPlanetaryStations)
             {
                 if (picked < pick)
                 {
