@@ -21,6 +21,7 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 |EnableOutgoingStorage|bool|false|Whether or not to enable picking items from storages with an outgoing sorter attached.|
 |EnableSearchingAllPlanets|bool|false|Whether or not to enable picking items from storages on any planets.|
 |EnableSearchingInterstellarStations|bool|false|Whether or not to enable picking items from interstellar stations.|
+|EnableSearchingPlanetaryStations|bool|false|Whether or not to enable picking items from planetary stations.|
 |EnableRightClickOnReplicator|bool|true|Enable right-click to replenish on Replicator window.|
 |EnableUnlimitedAccessInNormalMode|bool|false|Infinite access in normal mode (very cheaty).|
 
@@ -39,6 +40,13 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 
 
 ## Release Notes
+
+### v1.1.3
+- Added config `EnableSearchingPlanetaryStations` (default is off)(by LordMike)
+
+<details>
+<summary>Previous Changelog</summary>
+
 ### v1.1.2
 - Suppress error (by lxb007981)
 
@@ -86,3 +94,4 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 
 - Initial Release
 
+</details>
