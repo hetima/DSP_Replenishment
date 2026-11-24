@@ -12,6 +12,8 @@ The following will be added to the building tool to make use of this feature.
 
 Unlimited access to items regardless of stock in sandbox mode.
 
+Optionally (`EnableAutoRefillDeliverySlots`, off by default), the mecha's delivery slots (logistics slots) are refilled automatically. Every `AutoRefillIntervalSeconds`, each slot below its demand (slot + items on the way + inventory less than the demand set on the slot, the same rule as logistics bots) takes the shortfall from the same storages and stations as right-click, following the same settings. Nothing happens while the delivery slots are switched off. An item found nowhere is searched again after 10 seconds.
+
 ## Configuration
 
 Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.Replenishment.cfg`).
@@ -23,6 +25,8 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 |EnableSearchingInterstellarStations|bool|false|Whether or not to enable picking items from interstellar stations.|
 |EnableSearchingPlanetaryStations|bool|false|Whether or not to enable picking items from planetary stations.|
 |EnableRightClickOnReplicator|bool|true|Enable right-click to replenish on Replicator window.|
+|EnableAutoRefillDeliverySlots|bool|false|Automatically refill delivery slots (logistics slots) that are below their demand, from the same sources as right-click.|
+|AutoRefillIntervalSeconds|float|1|Seconds between automatic refill checks of the delivery slots.|
 |EnableUnlimitedAccessInNormalMode|bool|false|Infinite access in normal mode (very cheaty).|
 
 
@@ -37,6 +41,8 @@ Replenishment has some settings depend on BepInEx (file name is `com.hetima.dsp.
 - 蓄電器(満充電) が電力カテゴリに
 
 サンドボックスモードでは、在庫に関係なく無制限にアイテムが入手可能になります。
+
+オプション(`EnableAutoRefillDeliverySlots`、デフォルトはオフ)で、メカの配送スロット(物流スロット)を自動で補充できます。`AutoRefillIntervalSeconds` 秒ごとに、需要数に満たないスロット(スロット + 輸送中 + インベントリの合計がスロットに設定した需要数を下回るもの。物流ボットと同じ判定)へ、右クリックと同じ取り出し元・同じ設定で不足分を移動します。配送スロットがオフのときは何もしません。どこにも見つからなかったアイテムは10秒後に再び探します。
 
 
 ## Release Notes
