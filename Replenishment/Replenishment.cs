@@ -50,6 +50,16 @@ namespace ReplenishmentMod
                    "EnableRightClickOnReplicator",
                    true,
                    "Enable right-click to replenish on Replicator window.").Value;
+            Configs.configEnableAutoRefillDeliverySlots = Config.Bind<bool>(
+                   "General",
+                   "EnableAutoRefillDeliverySlots",
+                   false,
+                   "Automatically refill delivery slots (logistics slots) that are below their demand, from the same sources as right-click.").Value;
+            Configs.configAutoRefillIntervalSeconds = Config.Bind<float>(
+                   "General",
+                   "AutoRefillIntervalSeconds",
+                   1f,
+                   "Seconds between automatic refill checks of the delivery slots.").Value;
             Configs.configEnableUnlimitedAccessInNormalMode = Config.Bind<bool>(
                    "Cheat",
                    "EnableUnlimitedAccessInNormalMode",
@@ -65,6 +75,8 @@ namespace ReplenishmentMod
             public static bool configEnableSearchingInterstellarStations = false;
             public static bool configEnableSearchingPlanetaryStations = false;
             public static bool configEnableRightClickOnReplicator = true;
+            public static bool configEnableAutoRefillDeliverySlots = false;
+            public static float configAutoRefillIntervalSeconds = 1f;
             public static bool configEnableUnlimitedAccessInNormalMode = false;
 
         }
@@ -84,14 +96,14 @@ namespace ReplenishmentMod
             return null;
         }
 
-        private static int GetFromFactoryStorages(PlanetFactory factory, int itemId, out int inc)
+        private static int GetFromFactoryStorages(PlanetFactory factory, int itemId, int count, out int inc)
         {
             inc = 0;
             if (factory == null)
             {
                 return 0;
             }
-            int pick = StorageComponent.itemStackCount[itemId];
+            int pick = count;
             int picked = 0;
             FactoryStorage fs = factory.factoryStorage;
             for (int i = 1; i < fs.storageCursor; i++)
@@ -126,9 +138,10 @@ namespace ReplenishmentMod
                         continue;
                     }
                 }
-                picked += sc.TakeItem(itemId, pick, out int inc2);
+                int taken = sc.TakeItem(itemId, pick, out int inc2);
+                picked += taken;
                 inc += inc2;
-                pick -= picked;
+                pick -= taken;
                 if (pick <= 0)
                 {
                     return picked;
@@ -187,29 +200,29 @@ namespace ReplenishmentMod
             return false;
         }
 
-        public static bool DeliverFromAllPlanets(int itemId, out string err)
+        public static int TakeFromAllPlanets(int itemId, int count, out int inc)
         {
             GameData game = UIRoot.instance.uiGame.gameData;
             PlanetFactory[] factories = game.factories;
-            err = "Item not found";
             int picked = 0;
-            int pick = StorageComponent.itemStackCount[itemId];
-            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
-            int inc = 0;
+            int pick = count;
+            inc = 0;
             foreach (PlanetFactory factory in factories)
             {
-                picked += GetFromFactoryStorages(factory, itemId, out int inc2);
+                int taken = GetFromFactoryStorages(factory, itemId, pick, out int inc2);
+                picked += taken;
                 inc += inc2;
-                pick -= picked;
+                pick -= taken;
                 if (pick <= 0)
                 {
                     break;
                 }
                 if (Configs.configEnableSearchingInterstellarStations || Configs.configEnableSearchingPlanetaryStations)
                 {
-                    picked += GetFromFactoryStations(factory, itemId, pick, out int inc3);
+                    taken = GetFromFactoryStations(factory, itemId, pick, out int inc3);
+                    picked += taken;
                     inc += inc3;
-                    pick -= picked;
+                    pick -= taken;
                     if (pick <= 0)
                     {
                         break;
@@ -217,6 +230,14 @@ namespace ReplenishmentMod
                 }
 
             }
+            return picked;
+        }
+
+        public static bool DeliverFromAllPlanets(int itemId, out string err)
+        {
+            err = "Item not found";
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            int picked = TakeFromAllPlanets(itemId, StorageComponent.itemStackCount[itemId], out int inc);
             if (picked > 0)
             {
                 int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0, false);
@@ -226,25 +247,31 @@ namespace ReplenishmentMod
             return false;
         }
 
-        public static bool DeliverFromBirthPlanet(int itemId, out string err)
+        public static int TakeFromBirthPlanet(int itemId, int count, out int inc)
         {
-            int pick = StorageComponent.itemStackCount[itemId];
-            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            int pick = count;
             PlanetFactory factory = BirthPlanetFactory();
-            err = "Item not found";
-            int picked = GetFromFactoryStorages(factory, itemId, out int inc);
-            int inc2 = 0;
+            int picked = GetFromFactoryStorages(factory, itemId, pick, out inc);
             if (Configs.configEnableSearchingInterstellarStations || Configs.configEnableSearchingPlanetaryStations)
             {
                 if (picked < pick)
                 {
                     pick -= picked;
-                    picked += GetFromFactoryStations(factory, itemId, pick, out inc2);
+                    picked += GetFromFactoryStations(factory, itemId, pick, out int inc2);
+                    inc += inc2;
                 }
             }
+            return picked;
+        }
+
+        public static bool DeliverFromBirthPlanet(int itemId, out string err)
+        {
+            Player mainPlayer = UIRoot.instance.uiGame.gameData.mainPlayer;
+            err = "Item not found";
+            int picked = TakeFromBirthPlanet(itemId, StorageComponent.itemStackCount[itemId], out int inc);
             if (picked > 0)
             {
-                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc + inc2, false, 0, false);
+                int upCount = mainPlayer.TryAddItemToPackage(itemId, picked, inc, false, 0, false);
                 UIItemup.Up(itemId, upCount);
                 return true;
             }
@@ -303,6 +330,99 @@ namespace ReplenishmentMod
                     UIRealtimeTip.Popup(err, false, 0);
                 }
             }
+        }
+
+        //Takes up to count items from the same sources as DeliverFrom
+        public static int TakeFromSources(int itemId, int count, out int inc)
+        {
+            inc = 0;
+            if (GameMain.sandboxToolsEnabled || Configs.configEnableUnlimitedAccessInNormalMode)
+            {
+                return count;
+            }
+            if (Configs.configEnableSearchingAllPlanets)
+            {
+                return TakeFromAllPlanets(itemId, count, out inc);
+            }
+            return TakeFromBirthPlanet(itemId, count, out inc);
+        }
+
+        private float autoRefillTime = 0f;
+        //An item found nowhere is searched again after this many seconds
+        private const float autoRefillRetrySeconds = 10f;
+        private static readonly Dictionary<int, float> autoRefillRetryTime = new Dictionary<int, float>();
+
+        void Update()
+        {
+            if (!Configs.configEnableAutoRefillDeliverySlots || Time.unscaledTime < autoRefillTime)
+            {
+                return;
+            }
+            autoRefillTime = Time.unscaledTime + Mathf.Max(0.2f, Configs.configAutoRefillIntervalSeconds);
+            if (!GameMain.isRunning || GameMain.isPaused || GameMain.instance == null || GameMain.instance.isMenuDemo)
+            {
+                return;
+            }
+            AutoRefillDeliverySlots(GameMain.mainPlayer);
+        }
+
+        //Refills delivery slots below their demand (the game's own rule: slot + on the way + inventory + hand < demand)
+        public static int AutoRefillDeliverySlots(Player player)
+        {
+            DeliveryPackage dp = player?.deliveryPackage;
+            PlayerPackageUtility util = player?.packageUtility;
+            if (dp == null || util == null || !dp.unlockedAndEnabled)
+            {
+                return 0;
+            }
+            int moved = 0;
+            for (int i = 0; i < dp.gridLength; i++)
+            {
+                if (!dp.IsGridActive(i))
+                {
+                    continue;
+                }
+                DeliveryPackage.GRID grid = dp.grids[i];
+                int itemId = grid.itemId;
+                if (itemId <= 0 || grid.requireCount <= 0)
+                {
+                    continue;
+                }
+                int have = Math.Max(grid.modifiedCount, grid.count) + util.GetPackageItemCountIncludeHandItem(itemId);
+                int need = grid.clampedRequireCount - have;
+                int room = grid.stackSizeModified - grid.modifiedCount + util.GetPackageItemCapacity(itemId);
+                if (need > room)
+                {
+                    need = room;
+                }
+                if (need <= 0)
+                {
+                    continue;
+                }
+                if (autoRefillRetryTime.TryGetValue(itemId, out float retryTime) && Time.unscaledTime < retryTime)
+                {
+                    continue;
+                }
+                int picked = TakeFromSources(itemId, need, out int inc);
+                if (picked <= 0)
+                {
+                    autoRefillRetryTime[itemId] = Time.unscaledTime + autoRefillRetrySeconds;
+                    continue;
+                }
+                autoRefillRetryTime.Remove(itemId);
+                int added = util.AddItemToAllPackages(itemId, picked, i, inc, out int remainInc);
+                if (added < picked)
+                {
+                    player.TryAddItemToPackage(itemId, picked - added, remainInc, true, 0, false);
+                }
+                UIItemup.Up(itemId, picked);
+                moved += picked;
+            }
+            if (moved > 0)
+            {
+                util.Count();
+            }
+            return moved;
         }
 
         private static void OnToolBtnRightClick(int obj)
